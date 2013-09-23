@@ -4,6 +4,6 @@
 }
 .main_actions li{
 	float: right;
-	padding: 5px;
 	list-style: none;
+	padding: 0 5px;
 }

@@ -1,7 +1,9 @@
 import webapp2
 import jinja2
-import os, re
+import os, re, string
 import hmac, hashlib
+import logging
+import random
 
 from google.appengine.ext import db
 
@@ -12,7 +14,8 @@ SECRET = open('password.cfg').read()
 COOKIE_RE = re.compile(r'^user_id=$')
 
 
-################Cookies################
+################Cookies###########################
+
 def hash_str(s):
 	return hmac.new(SECRET, str(s)).hexdigest()
 
@@ -27,10 +30,63 @@ def check_secure_val(h):
 def valid_cookie(cookie):
 	return cookie and COOKIE_RE.match(cookie)
 
-################Password###############
+################Password##########################
+
+def make_salt(length=5):
+	return ''.join(random.choice(string.letters) for x in xrange(length))
+
+def make_pw_hash(name, pw, salt=None):
+	if not salt:
+		salt = make_salt()
+	h = hashlib.sha256(name + pw + salt).hexdigest()
+	return '%s,%s' % (h, salt)
+
+def valid_pw(name, pw, h):
+	salt = h.split(',')[1]
+	return h == self.make_pw_hash(name, pw, salt)
+
+################Signup and registration###########
+
+USER_RE = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
+def valid_username(username):
+	return USER_RE.match(username)
+
+PASSWORD_RE = re.compile(r"^.{3,20}$")
+def valid_password(password):
+	return PASSWORD_RE.match(password)
+
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+def valid_email(email):
+	return EMAIL_RE.match(email)
+
+class User(db.Model):
+	username = db.StringProperty(required=True)
+	pw_hash = db.StringProperty(required=True)
+	email = db.StringProperty()
+
+	@classmethod
+	def by_id(cls, uid):
+		return cls.get_by_id(uid)
+
+	@classmethod
+	def by_name(cls, name):
+		return cls.all().filter('name = ', name).get()
+
+	@classmethod
+	def register(cls, name, pw, email=None):
+		pw_hash = make_pw_hash(name, pw)
+		return cls(username=name, pw_hash=pw_hash, email=email)
+
+	@classmethod
+	def login(cls, name, pw):
+		u = cls.by_name(name)
+		if u and valid_pw(name, pw, u.pw_hash):
+			return u
+
+################base##############################
 
 class BaseHandler(webapp2.RequestHandler):
-	def __render_str(self, template, **kwargs):
+	def __render_str(self, template, **params):
 		t = JINJA_ENVIROMENT.get_template(template)
 		return t.render(params)
 
@@ -60,6 +116,7 @@ class BaseHandler(webapp2.RequestHandler):
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
 
+################wiki##############################
 
 class MainPage(BaseHandler):
 	def get(self):
@@ -70,7 +127,7 @@ class MainPage(BaseHandler):
 			'user_log': 'user_log',
 			'user_sig': 'user_sig',
 		}
-		self.render('base.html', template_values)
+		self.render('base.html', **template_values)
 
 
 application = webapp2.WSGIApplication([

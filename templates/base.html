@@ -1,0 +1,21 @@
+<!doctype html>
+{% autoescape true %}
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>Wiki-Exam</title>
+	<link rel="stylesheet" type="text/css" href="/stylesheets/main.css">
+</head>
+<body>
+	<div class="main_actions">
+		<ul>
+			<li><a href="#">{{ view }}</a></li>
+			<li><a href="#">{{ history }}</a></li>
+			<li><a href="#">{{ action }}</a></li>
+			<li><a href="#">{{ user_log }}</a></li>
+			<li><a href="#">{{ user_sig }}</a></li>
+		</ul>
+	</div>
+</body>
+</html>
+{% endautoescape %}

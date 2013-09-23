@@ -1,0 +1,9 @@
+.main_actions ul {
+	overflow: hidden;
+	margin-right: 45px;
+}
+.main_actions li{
+	float: right;
+	padding: 5px;
+	list-style: none;
+}

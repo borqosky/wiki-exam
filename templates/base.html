@@ -3,18 +3,21 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>Wiki-Exam</title>
+	<title>{{ title }}</title>
 	<link rel="stylesheet" type="text/css" href="/stylesheets/main.css">
 </head>
 <body>
 	<div class="main_actions">
 		<ul>
-			<li><a href="#">{{ view }}</a></li>
-			<li><a href="#">{{ history }}</a></li>
-			<li><a href="#">{{ action }}</a></li>
-			<li><a href="#">{{ user_log }}</a></li>
-			<li><a href="#">{{ user_sig }}</a></li>
+			<li><a href="/history">{{ history }}</a></li>
+			<li><a href="/{{ action_url }}">{{ action }}</a></li>
+			<li><a href="/{{_log_url }}">{{ log }}</a></li>
+			<li><a href="/signup">{{ user_sig }}</a></li>
 		</ul>
+	</div>
+	<div class="container">
+		{% block content %}
+		{% endblock %}
 	</div>
 </body>
 </html>

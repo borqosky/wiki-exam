@@ -121,13 +121,18 @@ class BaseHandler(webapp2.RequestHandler):
 class MainPage(BaseHandler):
 	def get(self):
 		template_values = {
+			'error_username': 'error_username',
+			'error_password': 'error_password',
+			'error_verify': 'error_verify',
+			'error_email': 'error_email',
 			'view': 'view',
 			'history': 'history',
 			'action': 'action',
 			'user_log': 'user_log',
-			'user_sig': 'user_sig',
+			'user_sig': '',
+			'title': 'signup'
 		}
-		self.render('base.html', **template_values)
+		self.render('signup.html', **template_values)
 
 
 application = webapp2.WSGIApplication([

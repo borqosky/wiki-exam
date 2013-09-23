@@ -7,3 +7,9 @@
 	list-style: none;
 	padding: 0 5px;
 }
+label {
+	text-align: left;
+}
+.error {
+	color: red;
+}

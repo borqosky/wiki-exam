@@ -118,23 +118,55 @@ class BaseHandler(webapp2.RequestHandler):
 
 ################wiki##############################
 
-class MainPage(BaseHandler):
+class Article(db.Model):
+	subject = db.StringProperty(required=True)
+	content = db.TextProperty(required=True)
+	created = db.DateTimeProperty(auto_now_add=True)
+	last_modified = db.DateTimeProperty(auto_now=True)
+
+	def render(self):
+		t = JINJA_ENVIROMENT.get_template('view.html')
+		return t.render(a=self)
+
+
+class SignupPage(BaseHandler):
 	def get(self):
-		template_values = {
-			'error_username': 'error_username',
-			'error_password': 'error_password',
-			'error_verify': 'error_verify',
-			'error_email': 'error_email',
-			'view': 'view',
-			'history': 'history',
-			'action': 'action',
-			'user_log': 'user_log',
-			'user_sig': '',
-			'title': 'signup'
-		}
-		self.render('signup.html', **template_values)
+		self.render('signup.html')
+	
+	def post(self):
+		have_error = False
+		username = self.request.get('username')
+		password = self.request.get('password')
+		verify = self.request.get('verify')
+		self.email = self.request.get('email')
+
+		params = dict(username=username, email=email)
+
+
+class LoginPage(BaseHandler):
+	def get(self):
+		pass
+	
+	def post(self):
+		pass
+
+
+class ViewPage(BaseHandler):
+	def get(self, article):
+		pass
+
+
+class EditPage(BaseHandler):
+	def get(self, article):
+		self.write(article)
+
+	def post(self):
+		pass
 
 
 application = webapp2.WSGIApplication([
-	('/', MainPage),
+	('/signup/?', SignupPage),
+	('/login', LoginPage),
+	('/_edit/(.*)/?', EditPage),
+	('/(.*)/?', ViewPage),
 ], debug=True)

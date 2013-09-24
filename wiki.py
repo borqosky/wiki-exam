@@ -45,19 +45,7 @@ def valid_pw(name, pw, h):
 	salt = h.split(',')[1]
 	return h == self.make_pw_hash(name, pw, salt)
 
-################Signup and registration###########
-
-USER_RE = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
-def valid_username(username):
-	return USER_RE.match(username)
-
-PASSWORD_RE = re.compile(r"^.{3,20}$")
-def valid_password(password):
-	return PASSWORD_RE.match(password)
-
-EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
-def valid_email(email):
-	return EMAIL_RE.match(email)
+################Models#############################
 
 class User(db.Model):
 	username = db.StringProperty(required=True)
@@ -75,13 +63,24 @@ class User(db.Model):
 	@classmethod
 	def register(cls, name, pw, email=None):
 		pw_hash = make_pw_hash(name, pw)
-		return cls(username=name, pw_hash=pw_hash, email=email)
+		return User(username=name, pw_hash=pw_hash, email=email)
 
 	@classmethod
 	def login(cls, name, pw):
 		u = cls.by_name(name)
 		if u and valid_pw(name, pw, u.pw_hash):
 			return u
+
+
+class Article(db.Model):
+	subject = db.StringProperty(required=True)
+	content = db.TextProperty(required=True)
+	created = db.DateTimeProperty(auto_now_add=True)
+	last_modified = db.DateTimeProperty(auto_now=True)
+
+	def render(self):
+		t = JINJA_ENVIROMENT.get_template('view.html')
+		return t.render(a=self)
 
 ################base##############################
 
@@ -118,15 +117,17 @@ class BaseHandler(webapp2.RequestHandler):
 
 ################wiki##############################
 
-class Article(db.Model):
-	subject = db.StringProperty(required=True)
-	content = db.TextProperty(required=True)
-	created = db.DateTimeProperty(auto_now_add=True)
-	last_modified = db.DateTimeProperty(auto_now=True)
+USER_RE = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
+def valid_username(username):
+	return USER_RE.match(username)
 
-	def render(self):
-		t = JINJA_ENVIROMENT.get_template('view.html')
-		return t.render(a=self)
+PASSWORD_RE = re.compile(r"^.{3,20}$")
+def valid_password(password):
+	return PASSWORD_RE.match(password)
+
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
+def valid_email(email):
+	return EMAIL_RE.match(email)
 
 
 class SignupPage(BaseHandler):
@@ -135,13 +136,41 @@ class SignupPage(BaseHandler):
 	
 	def post(self):
 		have_error = False
-		username = self.request.get('username')
-		password = self.request.get('password')
-		verify = self.request.get('verify')
+		self.username = self.request.get('username')
+		self.password = self.request.get('password')
+		self.verify = self.request.get('verify')
 		self.email = self.request.get('email')
 
-		params = dict(username=username, email=email)
+		params = dict(username=self.username, email=self.email)
 
+		if not valid_username(self.username):
+			params['error_username'] = "That's not a valid username."
+			have_error = True
+		if not valid_password(self.password):
+			params['error_password'] = "That wasn't a valid password."
+			have_error = True
+		if self.password != self.verify:
+			params['error_verify'] = "Your passwords didn't match."
+			have_error = True
+		if self.email and not valid_email(self.email):
+			params['error_email'] = "That's not a valid email."
+			have_error = True
+
+		if have_error:
+			self.render('signup.html', **params)
+		else:
+			self.done()
+
+	def done(self):
+		# make sure the user doesn't already exist
+		u = User.by_name(self.username)
+		if u:
+			msg = 'That user already exists.'
+			self.render('signup.html', error_username=msg)
+			u = User.register(self.name, self.password, self.email)
+			u.put()
+			self.login()
+			self.redirect('/')
 
 class LoginPage(BaseHandler):
 	def get(self):

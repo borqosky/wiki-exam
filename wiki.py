@@ -54,11 +54,11 @@ class User(db.Model):
 
 	@classmethod
 	def by_id(cls, uid):
-		return cls.get_by_id(uid)
+		return User.get_by_id(uid)
 
 	@classmethod
 	def by_name(cls, name):
-		return cls.all().filter('name = ', name).get()
+		return User.all().filter('username =', name).get()
 
 	@classmethod
 	def register(cls, name, pw, email=None):
@@ -167,10 +167,11 @@ class SignupPage(BaseHandler):
 		if u:
 			msg = 'That user already exists.'
 			self.render('signup.html', error_username=msg)
-			u = User.register(self.name, self.password, self.email)
-			u.put()
-			self.login()
-			self.redirect('/')
+		u = User.register(self.username, self.password, self.email)
+		u.put()
+		self.login(u)
+		self.redirect('/')
+
 
 class LoginPage(BaseHandler):
 	def get(self):

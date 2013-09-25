@@ -11,7 +11,7 @@ TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates')
 JINJA_ENVIROMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATE_DIR),
 							   extensions=['jinja2.ext.autoescape'])
 SECRET = open('password.cfg').read()
-COOKIE_RE = re.compile(r'^user_id=$')
+COOKIE_RE = lambda cookie: '|' in cookie
 
 
 ################Cookies###########################
@@ -28,7 +28,7 @@ def check_secure_val(h):
 		return val
 
 def valid_cookie(cookie):
-	return cookie and COOKIE_RE.match(cookie)
+	return cookie and COOKIE_RE(cookie)
 
 ################Password##########################
 
@@ -167,10 +167,11 @@ class SignupPage(BaseHandler):
 		if u:
 			msg = 'That user already exists.'
 			self.render('signup.html', error_username=msg)
-		u = User.register(self.username, self.password, self.email)
-		u.put()
-		self.login(u)
-		self.redirect('/')
+		else:
+			u = User.register(self.username, self.password, self.email)
+			u.put()
+			self.login(u)
+			self.redirect('/')
 
 
 class LoginPage(BaseHandler):
@@ -183,7 +184,10 @@ class LoginPage(BaseHandler):
 
 class ViewPage(BaseHandler):
 	def get(self, article):
-		pass
+		params = {'user_sig': 'sig in'}
+		if self.user:
+			params['user_sig'] = 'sign out'
+		self.render('view.html', **params)
 
 
 class EditPage(BaseHandler):

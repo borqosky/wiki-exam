@@ -43,7 +43,7 @@ def make_pw_hash(name, pw, salt=None):
 
 def valid_pw(name, pw, h):
 	salt = h.split(',')[1]
-	return h == self.make_pw_hash(name, pw, salt)
+	return h == make_pw_hash(name, pw, salt)
 
 ################Models#############################
 
@@ -179,10 +179,19 @@ class Signup(BaseHandler):
 
 class Login(BaseHandler):
 	def get(self):
-		pass
+		self.render('login.html')
 	
 	def post(self):
-		pass
+		username = self.request.get('username')
+		password = self.request.get('password')
+
+		u = User.login(username, password)
+		if u:
+			self.login(u)
+			self.redirect(PAGE)
+		else:
+			msg = 'Invalid login'
+			self.render('login.html', error=msg)
 
 
 class Logout(BaseHandler):

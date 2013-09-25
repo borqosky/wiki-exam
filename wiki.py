@@ -84,6 +84,7 @@ class Article(db.Model):
 
 ################base##############################
 
+
 class BaseHandler(webapp2.RequestHandler):
 	def __render_str(self, template, **params):
 		t = JINJA_ENVIROMENT.get_template(template)
@@ -129,8 +130,10 @@ EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 def valid_email(email):
 	return EMAIL_RE.match(email)
 
+PAGE = '/'
 
-class SignupPage(BaseHandler):
+
+class Signup(BaseHandler):
 	def get(self):
 		self.render('signup.html')
 	
@@ -171,10 +174,10 @@ class SignupPage(BaseHandler):
 			u = User.register(self.username, self.password, self.email)
 			u.put()
 			self.login(u)
-			self.redirect('/')
+			self.redirect(PAGE)
 
 
-class LoginPage(BaseHandler):
+class Login(BaseHandler):
 	def get(self):
 		pass
 	
@@ -182,25 +185,34 @@ class LoginPage(BaseHandler):
 		pass
 
 
-class ViewPage(BaseHandler):
-	def get(self, article):
-		params = {'user_sig': 'sig in'}
-		if self.user:
-			params['user_sig'] = 'sign out'
-		self.render('view.html', **params)
+class Logout(BaseHandler):
+	def get(self):
+		self.logout()
+		self.redirect(PAGE)
+
+
+class WikiPage(BaseHandler):
+	def get(self, page):
+		global PAGE
+		PAGE = page
+		params = {'user': self.user, 'title': 'wiki'}
+		self.render('wiki_page.html', **params)
 
 
 class EditPage(BaseHandler):
-	def get(self, article):
-		self.write(article)
+	def get(self, page):
+		pass
 
 	def post(self):
 		pass
 
 
+PAGE_RE = r'(/(?:[a-zA-Z0-9_-]+/?)*)'
+
 application = webapp2.WSGIApplication([
-	('/signup/?', SignupPage),
-	('/login', LoginPage),
-	('/_edit/(.*)/?', EditPage),
-	('/(.*)/?', ViewPage),
+	('/signup', Signup),
+	('/login', Login),
+	('/logout', Logout),
+	('/_edit' + PAGE_RE, EditPage),
+	(PAGE_RE, WikiPage),
 ], debug=True)

@@ -9,10 +9,15 @@
 <body>
 	<div class="main_actions">
 		<ul>
-			<li><a href="/history">{{ history }}</a></li>
-			<li><a href="/{{ action_url }}">{{ action }}</a></li>
-			<li><a href="/{{_log_url }}">{{ log }}</a></li>
-			<li><a href="/signup">{{ user_sig }}</a></li>
+			{% if user %}
+			<li><a href="/_edit">edit</a></li>
+			<li><a href="/history">history</a></li>
+			<li><a href="/logout">{{ user.username }}(logout)</a></li>
+			{% else %}
+			<li><a href="/history">history</a></li>
+			<li><a href="/login">login</a></li>
+			<li><a href="/signup">signup</a></li>
+			{% endif %}
 		</ul>
 	</div>
 	<div class="container">

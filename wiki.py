@@ -72,15 +72,15 @@ class User(db.Model):
 			return u
 
 
-class Article(db.Model):
-	subject = db.StringProperty(required=True)
+class Page(db.Model):
+	title = db.StringProperty(required=True)
 	content = db.TextProperty(required=True)
 	created = db.DateTimeProperty(auto_now_add=True)
 	last_modified = db.DateTimeProperty(auto_now=True)
 
-	def render(self):
-		t = JINJA_ENVIROMENT.get_template('view.html')
-		return t.render(a=self)
+	@classmethod
+	def by_name(cls, name):
+		return Page.all().filter('title =', name).get()
 
 ################base##############################
 
@@ -130,7 +130,7 @@ EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 def valid_email(email):
 	return EMAIL_RE.match(email)
 
-PAGE = '/'
+PREVIOUS_PAGE = '/'
 
 
 class Signup(BaseHandler):
@@ -174,7 +174,7 @@ class Signup(BaseHandler):
 			u = User.register(self.username, self.password, self.email)
 			u.put()
 			self.login(u)
-			self.redirect(PAGE)
+			self.redirect(PREVIOUS_PAGE)
 
 
 class Login(BaseHandler):
@@ -188,7 +188,7 @@ class Login(BaseHandler):
 		u = User.login(username, password)
 		if u:
 			self.login(u)
-			self.redirect(PAGE)
+			self.redirect(PREVIOUS_PAGE)
 		else:
 			msg = 'Invalid login'
 			self.render('login.html', error=msg)
@@ -197,23 +197,39 @@ class Login(BaseHandler):
 class Logout(BaseHandler):
 	def get(self):
 		self.logout()
-		self.redirect(PAGE)
+		self.redirect(PREVIOUS_PAGE)
 
 
 class WikiPage(BaseHandler):
-	def get(self, page):
-		global PAGE
-		PAGE = page
-		params = {'user': self.user, 'title': 'wiki'}
-		self.render('wiki_page.html', **params)
+	def get(self, title):
+		global PREVIOUS_PAGE; PREVIOUS_PAGE = title
+		page = Page.by_name(title)
+		if page:
+			params = {'user': self.user, 'title': page.title,
+					  'content': page.content, 'edit': True}
+			self.render('wiki_page.html', **params)
+		else:
+			self.redirect('/_edit' + title)
 
 
 class EditPage(BaseHandler):
-	def get(self, page):
-		pass
+	def get(self, title):
+		page = Page.by_name(title)
+		logging.error(title)
+		content = page.content if page else ''
+		self.render('edit.html', user=self.user, content=content,
+		 						 title=title)
 
-	def post(self):
-		pass
+	def post(self, title):
+		content = self.request.get('content').strip()
+		p = Page.by_name(title)
+		if p:
+			p.content = content
+		else:
+			p = Page(title=title, content=content)
+		p.put()
+		logging.error(title)
+		self.redirect(title)
 
 
 PAGE_RE = r'(/(?:[a-zA-Z0-9_-]+/?)*)'

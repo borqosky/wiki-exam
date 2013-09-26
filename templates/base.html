@@ -10,7 +10,11 @@
 	<div class="main_actions">
 		<ul>
 			{% if user %}
-			<li><a href="/_edit">edit</a></li>
+				{% if edit %}
+				<li><a href="/_edit{{ title }}">edit</a></li>
+				{% else %}
+				<li><a href="{{ title }}">view</a></li>
+				{% endif %}
 			<li><a href="/history">history</a></li>
 			<li><a href="/logout">{{ user.username }}(logout)</a></li>
 			{% else %}

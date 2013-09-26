@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
 {% block content %}
-	{{ markup | safe }}
+<form method="post">
+	<textarea rows="40" cols="120" name="content">
+		{{ content | safe }}
+	</textarea>
+	<br>
+	<input type="submit" value="Save">
+</form>
 {% endblock %}

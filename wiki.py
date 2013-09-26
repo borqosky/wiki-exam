@@ -6,6 +6,7 @@ import logging
 import random
 
 from google.appengine.ext import db
+from google.appengine.api import memcache
 
 TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), 'templates')
 JINJA_ENVIROMENT = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATE_DIR),
@@ -116,6 +117,18 @@ class BaseHandler(webapp2.RequestHandler):
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
 
+################memcache##########################
+
+def one_page(update=False, title=None):
+	key = str(title[1:])
+	page = memcache.get(key)
+	if not page or update:
+		logging.error('DB QUERY')
+		page = Page.by_name(title)
+		if page:
+			memcache.set(key, page)
+	return page
+
 ################wiki##############################
 
 USER_RE = re.compile(r'^[a-zA-Z0-9_-]{3,20}$')
@@ -203,7 +216,7 @@ class Logout(BaseHandler):
 class WikiPage(BaseHandler):
 	def get(self, title):
 		global PREVIOUS_PAGE; PREVIOUS_PAGE = title
-		page = Page.by_name(title)
+		page = one_page(update=False, title=title)
 		if page:
 			params = {'user': self.user, 'title': page.title,
 					  'content': page.content, 'edit': True}
@@ -214,21 +227,25 @@ class WikiPage(BaseHandler):
 
 class EditPage(BaseHandler):
 	def get(self, title):
-		page = Page.by_name(title)
-		logging.error(title)
-		content = page.content if page else ''
-		self.render('edit.html', user=self.user, content=content,
-		 						 title=title)
+		if self.user:
+			page = one_page(update=False, title=title)
+			content = page.content if page else ''
+			self.render('edit.html', user=self.user, content=content,
+		 						 	 title=title)
+		else:
+			self.render('base.html', title='credentials')
 
 	def post(self, title):
 		content = self.request.get('content').strip()
-		p = Page.by_name(title)
+		p = one_page(update=False, title=title)
 		if p:
+			if p.content == content:
+				self.redirect(title)
 			p.content = content
 		else:
 			p = Page(title=title, content=content)
 		p.put()
-		logging.error(title)
+		one_page(update=True, title=title)
 		self.redirect(title)
 
 

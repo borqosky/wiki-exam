@@ -4,6 +4,7 @@ import os, re, string
 import hmac, hashlib
 import logging
 import random
+import pickle
 
 from google.appengine.ext import db
 from google.appengine.api import memcache
@@ -95,6 +96,7 @@ class BaseHandler(webapp2.RequestHandler):
 		webapp2.RequestHandler.initialize(self, *args, **kwargs)
 		uid = self.read_secure_cookie('user_id')
 		self.user = uid and User.by_id(int(uid))
+		self.previous_page = self.request.get('referrer', '/')
 
 	def write(self, *args, **kwargs):
 		self.response.write(*args, **kwargs)
@@ -119,14 +121,12 @@ class BaseHandler(webapp2.RequestHandler):
 
 ################memcache##########################
 
-def one_page(update=False, title=None):
-	key = str(title[1:])
+def one_page(update=False, key=None):
 	page = memcache.get(key)
 	if not page or update:
 		logging.error('DB QUERY')
-		page = Page.by_name(title)
-		if page:
-			memcache.set(key, page)
+		page = Page.by_name(key)
+		memcache.set(key, page)
 	return page
 
 ################wiki##############################
@@ -142,8 +142,6 @@ def valid_password(password):
 EMAIL_RE = re.compile(r"^[\S]+@[\S]+\.[\S]+$")
 def valid_email(email):
 	return EMAIL_RE.match(email)
-
-PREVIOUS_PAGE = '/'
 
 
 class Signup(BaseHandler):
@@ -187,7 +185,7 @@ class Signup(BaseHandler):
 			u = User.register(self.username, self.password, self.email)
 			u.put()
 			self.login(u)
-			self.redirect(PREVIOUS_PAGE)
+			self.redirect(self.previous_page)
 
 
 class Login(BaseHandler):
@@ -201,7 +199,7 @@ class Login(BaseHandler):
 		u = User.login(username, password)
 		if u:
 			self.login(u)
-			self.redirect(PREVIOUS_PAGE)
+			self.redirect(self.previous_page)
 		else:
 			msg = 'Invalid login'
 			self.render('login.html', error=msg)
@@ -210,13 +208,12 @@ class Login(BaseHandler):
 class Logout(BaseHandler):
 	def get(self):
 		self.logout()
-		self.redirect(PREVIOUS_PAGE)
+		self.redirect(self.previous_page)
 
 
 class WikiPage(BaseHandler):
 	def get(self, title):
-		global PREVIOUS_PAGE; PREVIOUS_PAGE = title
-		page = one_page(update=False, title=title)
+		page = Page.by_name(title)
 		if page:
 			params = {'user': self.user, 'title': page.title,
 					  'content': page.content, 'edit': True}
@@ -228,7 +225,7 @@ class WikiPage(BaseHandler):
 class EditPage(BaseHandler):
 	def get(self, title):
 		if self.user:
-			page = one_page(update=False, title=title)
+			page = Page.by_name(title)
 			content = page.content if page else ''
 			self.render('edit.html', user=self.user, content=content,
 		 						 	 title=title)
@@ -237,15 +234,16 @@ class EditPage(BaseHandler):
 
 	def post(self, title):
 		content = self.request.get('content').strip()
-		p = one_page(update=False, title=title)
+		p = Page.by_name(title)
 		if p:
 			if p.content == content:
 				self.redirect(title)
-			p.content = content
+				return
+			else:
+				p.content = content
 		else:
 			p = Page(title=title, content=content)
 		p.put()
-		one_page(update=True, title=title)
 		self.redirect(title)
 
 

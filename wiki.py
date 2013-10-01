@@ -121,12 +121,12 @@ class BaseHandler(webapp2.RequestHandler):
 
 ################memcache##########################
 
-def one_page(update=False, key=None):
+def get_page(update=False, key=None):
 	page = memcache.get(key)
 	if not page or update:
 		logging.error('DB QUERY')
 		page = Page.by_name(key)
-		memcache.set(key, page)
+		if page: memcache.set(key, page)
 	return page
 
 ################wiki##############################
@@ -213,7 +213,7 @@ class Logout(BaseHandler):
 
 class WikiPage(BaseHandler):
 	def get(self, title):
-		page = Page.by_name(title)
+		page = get_page(update=False, key=title)
 		if page:
 			params = {'user': self.user, 'title': page.title,
 					  'content': page.content, 'edit': True}
@@ -225,7 +225,7 @@ class WikiPage(BaseHandler):
 class EditPage(BaseHandler):
 	def get(self, title):
 		if self.user:
-			page = Page.by_name(title)
+			page = get_page(update=True, key=title)
 			content = page.content if page else ''
 			self.render('edit.html', user=self.user, content=content,
 		 						 	 title=title)
@@ -234,7 +234,7 @@ class EditPage(BaseHandler):
 
 	def post(self, title):
 		content = self.request.get('content').strip()
-		p = Page.by_name(title)
+		p = get_page(update=True, key=title)
 		if p:
 			if p.content == content:
 				self.redirect(title)
@@ -244,6 +244,7 @@ class EditPage(BaseHandler):
 		else:
 			p = Page(title=title, content=content)
 		p.put()
+		p = get_page(update=True, key=title)
 		self.redirect(title)
 
 

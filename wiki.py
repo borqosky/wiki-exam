@@ -147,6 +147,7 @@ def valid_email(email):
 class Signup(BaseHandler):
 	def get(self):
 		self.render('signup.html')
+		self.previous_page = '/' if self.previous_page == '/signup' else self.previous_page
 	
 	def post(self):
 		have_error = False
@@ -190,6 +191,7 @@ class Signup(BaseHandler):
 
 class Login(BaseHandler):
 	def get(self):
+		self.previous_page = '/' if self.previous_page == '/login' else self.previous_page
 		self.render('login.html')
 	
 	def post(self):
@@ -212,40 +214,40 @@ class Logout(BaseHandler):
 
 
 class WikiPage(BaseHandler):
-	def get(self, title):
-		page = get_page(update=False, key=title)
+	def get(self, path):
+		page = get_page(update=False, key=path)
 		if page:
 			params = {'user': self.user, 'title': page.title,
 					  'content': page.content, 'edit': True}
 			self.render('wiki_page.html', **params)
 		else:
-			self.redirect('/_edit' + title)
+			self.redirect('/_edit' + path)
 
 
 class EditPage(BaseHandler):
-	def get(self, title):
+	def get(self, path):
 		if self.user:
-			page = get_page(update=True, key=title)
+			page = get_page(update=True, key=path)
 			content = page.content if page else ''
 			self.render('edit.html', user=self.user, content=content,
-		 						 	 title=title)
+		 						 	 title=path)
 		else:
 			self.render('base.html', title='credentials')
 
-	def post(self, title):
+	def post(self, path):
 		content = self.request.get('content').strip()
-		p = get_page(update=True, key=title)
+		p = get_page(update=True, key=path)
 		if p:
 			if p.content == content:
-				self.redirect(title)
+				self.redirect(path)
 				return
 			else:
 				p.content = content
 		else:
-			p = Page(title=title, content=content)
+			p = Page(title=path, content=content)
 		p.put()
-		p = get_page(update=True, key=title)
-		self.redirect(title)
+		p = get_page(update=True, key=path)
+		self.redirect(path)
 
 
 PAGE_RE = r'(/(?:[a-zA-Z0-9_-]+/?)*)'

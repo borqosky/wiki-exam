@@ -32,6 +32,15 @@ def check_secure_val(h):
 def valid_cookie(cookie):
 	return cookie and COOKIE_RE(cookie)
 
+##################################################
+
+def gray_style(lst):
+	for n, x in enumerate(lst):
+		if n % 2 == 0:
+			yield x, ''
+		else:
+			yield x, 'gray'
+
 ################Password##########################
 
 def make_salt(length=5):
@@ -80,6 +89,21 @@ class Page(db.Model):
 	created = db.DateTimeProperty(auto_now_add=True)
 	last_modified = db.DateTimeProperty(auto_now=True)
 
+	@staticmethod
+	def parent_key(path):
+		return db.Key.from_path('/root' + path, 'pages')
+
+	@classmethod
+	def by_path(cls, path):
+		q.cls.all()
+		q.ancestor(cls.parent_key(path))
+		q.order('-created')
+		return q
+
+	@classmethod
+	def by_id(cls, page_id, path):
+		return cls.get_by_id(page_id, cls.parent_key(path))
+
 	@classmethod
 	def by_name(cls, name):
 		return Page.all().filter('title =', name).get()
@@ -96,13 +120,19 @@ class BaseHandler(webapp2.RequestHandler):
 		webapp2.RequestHandler.initialize(self, *args, **kwargs)
 		uid = self.read_secure_cookie('user_id')
 		self.user = uid and User.by_id(int(uid))
-		self.previous_page = self.request.get('referrer', '/')
+		self.previous_page = self.request.headers.get('referrer', '/')
+		self.can_post = self.user and self.user.name == 'wlodek'
 
 	def write(self, *args, **kwargs):
 		self.response.write(*args, **kwargs)
 
 	def render(self, template, **kwargs):
 		self.write(self.__render_str(template, **kwargs))
+
+	def render_str(self, template, **params):
+		params['user'] = self.user
+		params['gray_style'] = gray_style
+		return render_str(template, **params)
 
 	def set_secure_cookie(self, name, val):
 		self.response.headers.add_header(
@@ -118,6 +148,16 @@ class BaseHandler(webapp2.RequestHandler):
 
 	def logout(self):
 		self.response.headers.add_header('Set-Cookie', 'user_id=; Path=/')
+
+	def notfound(self):
+		self.error(404)
+		self.write("<h1>404: Not Found</h1>Sorry, my friend, but that page does not exist.")	
+
+
+class NoSlash(BaseHandler):
+	def get(self, path):
+		new_path = path.rstrip('/') or '/'
+		self.redirect(new_path)
 
 ################memcache##########################
 
@@ -146,8 +186,8 @@ def valid_email(email):
 
 class Signup(BaseHandler):
 	def get(self):
-		self.render('signup.html')
-		self.previous_page = '/' if self.previous_page == '/signup' else self.previous_page
+		previous_page = str(self.request.referer)
+		self.render('signup.html', previous_page=previous_page)
 	
 	def post(self):
 		have_error = False
@@ -155,8 +195,11 @@ class Signup(BaseHandler):
 		self.password = self.request.get('password')
 		self.verify = self.request.get('verify')
 		self.email = self.request.get('email')
+		previous_page = str(self.request.get('previous_page'))
+		if not previous_page or previous_page.startswith('/login'):
+			self.previous_page = '/'
 
-		params = dict(username=self.username, email=self.email)
+		params = dict(username=self.username, email=self.email, previous_page=self.previous_page)
 
 		if not valid_username(self.username):
 			params['error_username'] = "That's not a valid username."
@@ -181,30 +224,30 @@ class Signup(BaseHandler):
 		u = User.by_name(self.username)
 		if u:
 			msg = 'That user already exists.'
-			self.render('signup.html', error_username=msg)
+			self.render('signup.html', error_username=msg, previous_page=self.previous_page)
 		else:
 			u = User.register(self.username, self.password, self.email)
-			u.put()
-			self.login(u)
 			self.redirect(self.previous_page)
 
 
 class Login(BaseHandler):
 	def get(self):
-		self.previous_page = '/' if self.previous_page == '/login' else self.previous_page
-		self.render('login.html')
+		self.render('login.html', previous_page=self.previous_page)
 	
 	def post(self):
 		username = self.request.get('username')
 		password = self.request.get('password')
+		previous_page = self.request.get('previous_page')
+		if not previous_page or previous_page.startswith('/login'):
+			previous_page = '/'
 
 		u = User.login(username, password)
 		if u:
 			self.login(u)
-			self.redirect(self.previous_page)
+			self.redirect(previous_page)
 		else:
 			msg = 'Invalid login'
-			self.render('login.html', error=msg)
+			self.render('login.html', error=msg, previous_page=previous_page)
 
 
 class Logout(BaseHandler):
@@ -215,6 +258,7 @@ class Logout(BaseHandler):
 
 class WikiPage(BaseHandler):
 	def get(self, path):
+		logging.error(self.request.referer)
 		page = get_page(update=False, key=path)
 		if page:
 			params = {'user': self.user, 'title': page.title,
@@ -226,13 +270,14 @@ class WikiPage(BaseHandler):
 
 class EditPage(BaseHandler):
 	def get(self, path):
+		logging.error(self.request.referer)
 		if self.user:
 			page = get_page(update=True, key=path)
 			content = page.content if page else ''
 			self.render('edit.html', user=self.user, content=content,
 		 						 	 title=path)
 		else:
-			self.render('base.html', title='credentials')
+			self.redirect('/login')
 
 	def post(self, path):
 		content = self.request.get('content').strip()

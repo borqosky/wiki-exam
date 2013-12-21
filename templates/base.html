@@ -3,7 +3,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>{{ title }}</title>
+	<title>{{ page.title }}</title>
 	<link rel="stylesheet" type="text/css" href="/stylesheets/main.css">
 </head>
 <body>
@@ -11,11 +11,11 @@
 		<ul>
 			{% if user %}
 				{% if edit %}
-				<li><a href="/_edit{{ title }}">edit</a></li>
+				<li><a href="/_edit{{ page.title }}">edit</a></li>
 				{% else %}
 				<li><a href="{{ title }}">view</a></li>
 				{% endif %}
-			<li><a href="/history">history</a></li>
+			<li><a href="/_history">history</a></li>
 			<li><a href="/logout">{{ user.username }}(logout)</a></li>
 			{% else %}
 			<li><a href="/history">history</a></li>

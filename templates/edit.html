@@ -3,7 +3,7 @@
 {% block content %}
 <form method="post">
 	<textarea rows="40" cols="120" name="content">
-		{{ content | safe }}
+		{{ page.content | safe }}
 	</textarea>
 	<br>
 	<input type="hidden" name="previous_page" value="{{previous_page}}">

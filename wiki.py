@@ -4,7 +4,6 @@ import os, re, string
 import hmac, hashlib
 import logging
 import random
-import pickle
 
 from google.appengine.ext import db
 from google.appengine.api import memcache
